@@ -52,7 +52,6 @@ class WordGuesser:
             guess_rank = game.rank_guess(guess)
             if guess_rank < 0:
                 continue
-            self.guesses.append(guess)
             self.guess_ranks.append(guess_rank)
 
             if guess_rank == 0:
@@ -160,7 +159,7 @@ class QdrantWordGuesser(WordGuesser):
             prev_other_guess_ids = [id_ for idx, id_ in enumerate(self.guess_ids) if idx != prev_best_guess_idx]
 
             query_result = self.client.query_points(
-                collection_name="test_collection",
+                collection_name=self.collection_name,
                 query=models.RecommendQuery(
                     recommend=models.RecommendInput(
                         positive=[prev_best_guess_id],
@@ -270,7 +269,9 @@ class InMemoryWordGuesser(WordGuesser):
         # If the last guess was good, it got a positive score, and the scored similarities for similar guesses increase.
         # Otherwise, the scored similarities for similar guesses decrease, such that next guess will be different.
         self.scored_similarities += self.embeddings @ self.embeddings[self.guess_ids[-1]].T * last_score
-        self.scored_similarities[self.guess_ids[-1]] = 0
+
+        # Mask previous guesses such that they are not repeated
+        self.scored_similarities[self.guess_ids] = float("-inf")
 
     def make_guess(self, scoring_threshold: Optional[float] = None) -> str:
         """
