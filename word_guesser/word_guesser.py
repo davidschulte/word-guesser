@@ -65,7 +65,7 @@ class QdrantWordGuesser(WordGuesser):
             self.client.delete_collection(collection_name=self.collection_name)
         if not self.client.collection_exists(collection_name=self.collection_name):
             self.client.create_collection(
-                collection_name="test_collection",
+                collection_name=self.collection_name,
                 vectors_config=models.VectorParams(size=self.vector_dim, distance=models.Distance.COSINE),
             )
 
@@ -82,11 +82,11 @@ class QdrantWordGuesser(WordGuesser):
             batch = lines[batch_i * batch_size : min((batch_i + 1) * batch_size, len(lines))]
             batch_lines_read = [read_glove_line(line) for line in batch]
             self.client.upsert(
-                collection_name="test_collection",
+                collection_name=self.collection_name,
                 wait=True,
                 points=[
                     models.PointStruct(id=batch_i * batch_size + i, vector=embedding, payload={"word": word})
-                    for i, (word, embedding) in enumerate(zip(*batch_lines_read)) 
+                    for i, (word, embedding) in enumerate(batch_lines_read)
                 ],
             )
 
