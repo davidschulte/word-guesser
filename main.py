@@ -1,0 +1,21 @@
+from word_guesser import WordGuessingGame, InMemoryWordGuesser, QdrantWordGuesser
+from pathlib import Path
+
+vocab_file_path = Path("glove.6B/glove.6B.50d.txt")
+num_targets = 10
+num_games_per_target = 3
+def main():
+
+    game = WordGuessingGame(vocab_file_path=vocab_file_path)
+    player = InMemoryWordGuesser(vocab_file_path=vocab_file_path)
+    #player = QdrantWordGuesser(vocab_file_path=vocab_file_path, vector_dim=50)
+
+    for _ in range(num_targets):
+        game.pick_target()
+
+        for _ in range(num_games_per_target):
+            player.play(game)
+
+
+if __name__ == "__main__":
+    main()
