@@ -1,9 +1,11 @@
 # word-guesser
 
-Iteratively guessing words until you found the right one.
+**Iteratively guessing words until you found the right one.**
 
-
-![A screenshot from Contexto](contexto.png "A screenshot from Contexto")
+<br>
+<div align="center">
+  <img src="contexto.png" alt="A screenshot from Contexto" width="600"/>
+</div>
 
 ## The Premise
 [Contexto](https://contexto.me/en/) is a word guessing game that is based on word similarity. Their is a target word unknown to the user. The user makes guesses and gets feedback on how similar the guess is to the target word. Similarity is not expressed as a continuous metric, but rather in how high the guess ranks with regard to similarity to the target. 
