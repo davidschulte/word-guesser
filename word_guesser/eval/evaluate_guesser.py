@@ -56,7 +56,6 @@ def main():
     for guesser_name, guesser in guessers.items():
         for target in tqdm(list(word_frequencies.keys())[:num_words], desc=f"Evaluating {guesser_name}", unit="target"):
             if target not in game.words:
-                print(target)
                 continue
             guess_counts = []
             times = []
@@ -82,14 +81,12 @@ def main():
     with open("results.pkl", "rb") as f:
         results = pickle.load(f)
 
-
     for metric in ("guess", "time"):
         for statistic in ("means", "stds"):
-
+            plt.figure(figsize=(15,10))
             for guesser_name in guessers:
                 guesser_results = results[guesser_name]
                 plt.hist(guesser_results[f"{metric}_{statistic}"], bins=100, alpha=0.6, label=guesser_name)
-                #axs[row][col].hist(guesser_results[f"{metric}_{statistic}"], bins=100, alpha=0.6, label=guesser_name)
             plt.legend()
 
             statistic_str = "Average" if statistic == "means" else "Standard deviation of"
