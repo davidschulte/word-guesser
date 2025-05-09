@@ -28,18 +28,26 @@ class WordGuesser:
     def make_guess(self):
         pass
 
-    def play(self, game: WordGuessingGame, max_num_guesses: int = 100) -> int:
+    def play(self, game: WordGuessingGame, max_num_guesses: Optional[int] = None, verbose: int = 1) -> int:
         self.reset_guesses()
-        for num_guess in range(max_num_guesses):
+        while not max_num_guesses or len(self.guesses) <= max_num_guesses - 1:
             guess = self.make_guess()
             guess_rank = game.rank_guess(guess)
+            if guess_rank < 0:
+                continue
+            self.guesses.append(guess)
             self.guess_ranks.append(guess_rank)
 
             if guess_rank == 0:
-                print(f"Guessed the word {guess} after {num_guess} guesses!")
-                return num_guess
-            
-        print(f"Couldn't find the word {game.tell_target()} with {max_num_guesses} tries. Last guess was {self.guesses[-1]}.")
+                if verbose > 0:
+                    print(f"Guessed the word {guess} after {len(self.guesses)} guesses!")
+                return len(self.guesses)
+
+            if verbose > 1:
+                print(f"Rank {guess_rank:<6}: {guess}")
+
+        print((f"Couldn't find the word {game.tell_target()} with {max_num_guesses} tries."
+               f"Last guess was {self.guesses[-1]}."))
         return -1
 
 
@@ -193,4 +201,9 @@ class InMemoryWordGuesser(WordGuesser):
 class HumanWordGuesser(WordGuesser):
 
     def make_guess(self) -> str:
-        return input("Make a guess: ")
+        while True:
+            guess = input("Make a guess: ")
+            if guess in self.guesses:
+                print(f"You already guessed {guess}. It's rank {self.guess_ranks[self.guesses.index(guess)]}.")
+            else:
+                return guess
