@@ -93,7 +93,7 @@ class QdrantWordGuesser(WordGuesser):
 
         
     def make_guess(self, strategy: models.RecommendStrategy = models.RecommendStrategy.AVERAGE_VECTOR) -> str:
-        if len(self.guesses) < 3:
+        if len(self.guesses) < 2:
             guess_id = np.random.randint(0, self.vocab_size)
 
             guess_response = self.client.retrieve(
@@ -149,6 +149,7 @@ class InMemoryWordGuesser(WordGuesser):
 
     def make_guess(self, scoring_threshold: float = 0.9999) -> str:
         if len(self.guesses) < 3:
+        if len(self.guesses) < 2:
             guess_id = np.random.randint(0, self.vocab_size)
             guess = self.words[guess_id]
 
