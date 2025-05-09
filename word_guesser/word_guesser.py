@@ -73,7 +73,7 @@ class QdrantWordGuesser(WordGuesser):
     The QdrantWordGuesser uses Qdrant to store its vocabulary and embeddings. To select next guesses it uses
     Qdrant's recommendation function. It always chooses the best previous guess as a positive example and the other
     guesses as negative examples.
-    For more details see: https://qdrant.tech/documentation/concepts/explore/#average-vector-strategy
+    For more details see: https://qdrant.tech/articles/vector-similarity-beyond-search/
     """
 
     def __init__(
