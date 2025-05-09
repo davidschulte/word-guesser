@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 from .utils import read_vocab, read_glove_line
-from typing import Optional
+from typing import Optional, Union
 import difflib
 
 
@@ -26,26 +26,25 @@ class WordGuessingGame:
         self.embeddings = embeddings
         self.vocab_size = len(words)
 
-    def pick_target(self, word: Optional[str] = None, id: Optional[int] = None):
-        if word and id:
-            raise ValueError("You can ony specify a word or a word ID.")
 
-        if word:
-            if word not in self.words:
-                raise ValueError(f"{word} is not in the vocabulary.")
+    def pick_target(self, target: Optional[Union[str, int]] = None):
+        if isinstance(target, str):
+            if target not in self.words:
+                raise ValueError(f"{target} is not in the vocabulary.")
             
-            self.target_word = word
-            self.target_id = self.word2idx[word]
+            self.target_word = target
+            self.target_id = self.word2idx[target]
             
         else:
-            if not id:
-                id = np.random.randint(0, self.vocab_size)
+            if not target:
+                target = np.random.randint(0, self.vocab_size)
 
-            if not 0 <= id < len(self.words):
-                raise ValueError(f"ID {id} is not in the vocabulary.")
+            if isinstance(target, int):
+                if not 0 <= target < len(self.words):
+                    raise ValueError(f"ID {target} is not in the vocabulary.")
 
-            self.target_word = self.words[id]
-            self.target_id = id
+                self.target_word = self.words[target]
+                self.target_id = target
 
         self.word_ranking = (-self.embeddings @ self.embeddings[self.target_id].T).argsort()
 
