@@ -2,7 +2,17 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+
 def read_vocab(vocab_file_path: Path) -> list[str]:
+    """
+    Reads a GloVe vocabulary file and returns its lines
+
+    Args:
+        vocab_file_path: The path to a GloVe vocabulary file
+
+    Returns:
+        The read line
+    """
     with open(vocab_file_path, "r") as f:
         lines = f.readlines()
 
@@ -10,6 +20,15 @@ def read_vocab(vocab_file_path: Path) -> list[str]:
 
 
 def read_glove_line(line: str) -> tuple[str, list[float]]:
+    """
+    Reads a GloVe line and splits it into a word and an embedding
+
+    Args:
+        line: A GloVe line
+
+    Returns:
+        The word and the embedding
+    """
     split_line = line.split()
 
     word = split_line[0]
@@ -19,6 +38,17 @@ def read_glove_line(line: str) -> tuple[str, list[float]]:
 
 
 def read_word_frequencies(word_freq_file_path: Path) -> dict[str, float]:
+    """
+    Reads a word frequency file. The file must be a csv with the columns "word" and "count".
+    Their frequencies get transformed by first applying the natural logarithm to their count, and then dividing their
+    count by the maximum count in the file.
+
+    Args:
+        word_freq_file_path: A path to word frequency file
+
+    Returns:
+        A dictionary with the words as keys and the transformed frequencies as values
+    """
     df = pd.read_csv(word_freq_file_path)
 
     for required_col in ("word", "count"):

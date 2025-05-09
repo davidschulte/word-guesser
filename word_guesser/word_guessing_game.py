@@ -8,6 +8,11 @@ import difflib
 class WordGuessingGame:
 
     def __init__(self, vocab_file_path: Path):
+        self.words = None
+        self.word2idx = None
+        self.embeddings = None
+        self.vocab_size = None
+
         self.initialize_vocab(vocab_file_path)
 
         self.target_word = None
@@ -15,6 +20,15 @@ class WordGuessingGame:
         self.word_ranking = None
 
     def initialize_vocab(self, vocab_file_path: Path):
+        """
+        Initializes the vocabulary of the game
+
+        Args:
+            vocab_file_path: The path to a file with GloVe embeddings
+
+        Returns:
+
+        """
         lines = read_vocab(vocab_file_path)
 
         words, embeddings = zip(*[read_glove_line(l) for l in lines])
@@ -26,8 +40,16 @@ class WordGuessingGame:
         self.embeddings = embeddings
         self.vocab_size = len(words)
 
-
     def pick_target(self, target: Optional[Union[str, int]] = None):
+        """
+        Sets a target word for the game
+
+        Args:
+            target: The target word can either be passed as the word or as the id in the vocabulary
+
+        Returns:
+
+        """
         if isinstance(target, str):
             if target not in self.words:
                 raise ValueError(f"{target} is not in the vocabulary.")
@@ -49,6 +71,17 @@ class WordGuessingGame:
         self.word_ranking = (-self.embeddings @ self.embeddings[self.target_id].T).argsort()
 
     def rank_guess(self, guess: str, suggest_vocabulary_word: bool = True) -> int:
+        """
+        Ranks a guess
+
+        Args:
+            guess: The guess
+            suggest_vocabulary_word: If set to True and the word is not in the game vocabulary,
+                a similar word is suggested.
+
+        Returns:
+
+        """
         if guess not in self.words:
             print(f"The word {guess} is not in the vocabulary.")
             if suggest_vocabulary_word:
@@ -63,4 +96,10 @@ class WordGuessingGame:
         return int(np.argmax(self.word_ranking == guess_idx))
 
     def tell_target(self) -> str:
+        """
+        Tells the target word
+
+        Returns:
+            The target word
+        """
         return self.target_word

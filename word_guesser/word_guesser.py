@@ -1,11 +1,11 @@
-import numpy as np
 from abc import abstractmethod
-
-from qdrant_client import QdrantClient, models
+from typing import Optional
 from pathlib import Path
 import math
+
+import numpy as np
+from qdrant_client import QdrantClient, models
 from tqdm.auto import tqdm
-from typing import Optional
 
 from word_guesser.word_guessing_game import WordGuessingGame
 from word_guesser.utils import read_vocab, read_glove_line, read_word_frequencies
@@ -19,17 +19,34 @@ class WordGuesser:
         self.guess_ranks = []
         self.vocab_size = -1
 
-    def reset_guesses(self):
+    def _reset_guesses(self):
         self.guesses = []
         self.guess_ids = []
         self.guess_ranks = []
 
     @abstractmethod
-    def make_guess(self):
+    def make_guess(self) -> str:
+        """
+        Makes the next guess
+
+        Returns:
+            The next guess
+        """
         pass
 
     def play(self, game: WordGuessingGame, max_num_guesses: Optional[int] = None, verbose: int = 1) -> int:
-        self.reset_guesses()
+        """
+        Plays a game
+
+        Args:
+            game: The game to be played
+            max_num_guesses: The maximum number of allowed guesses. If set to -1, there is no limit
+            verbose: 0 suppresses all console logs, 1 prints the outcome, 2 shows the ranking of each guess
+
+        Returns:
+            The number of guesses used or -1 if the maximum number of guesses is surpassed
+        """
+        self._reset_guesses()
         while not max_num_guesses or len(self.guesses) <= max_num_guesses - 1:
             guess = self.make_guess()
             guess_rank = game.rank_guess(guess)
@@ -52,6 +69,12 @@ class WordGuesser:
 
 
 class QdrantWordGuesser(WordGuesser):
+    """
+    The QdrantWordGuesser uses Qdrant to store its vocabulary and embeddings. To select next guesses it uses
+    Qdrant's recommendation function. It always chooses the best previous guess as a positive example and the other
+    guesses as negative examples.
+    For more details see: https://qdrant.tech/documentation/concepts/explore/#average-vector-strategy
+    """
 
     def __init__(
             self,
@@ -68,6 +91,17 @@ class QdrantWordGuesser(WordGuesser):
         self.initialize_vocab(vocab_file_path)
 
     def initialize_vocab(self, vocab_file_path: Path, overwrite_collection: bool = False, batch_size: int = 1024):
+        """
+        Initializes the vocabulary of the guesser
+
+        Args:
+            vocab_file_path: The path to a file with GloVe embeddings
+            overwrite_collection: If set to True, the collection will be overwritten
+            batch_size: The batch size for adding points to the collection
+
+        Returns:
+
+        """
         if self.collection_name is None:
             self.collection_name = vocab_file_path.stem
 
@@ -101,6 +135,15 @@ class QdrantWordGuesser(WordGuesser):
             )
 
     def make_guess(self, strategy: models.RecommendStrategy = models.RecommendStrategy.AVERAGE_VECTOR) -> str:
+        """
+        Makes the next guess
+
+        Args:
+            strategy: A recommendation strategy for the next guess
+
+        Returns:
+            The next guess
+        """
         if len(self.guesses) < 2:
             guess_id = np.random.randint(0, self.vocab_size)
 
@@ -138,6 +181,14 @@ class QdrantWordGuesser(WordGuesser):
 
 
 class InMemoryWordGuesser(WordGuesser):
+    """
+    The InMemoryWordGuesser stores its vocabulary and embeddings in memory. When selecting next guesses it favors
+    words that are similar to good previous guesses and different from bad previous guesses. This is handled using the
+    scoring threshold. For example, a scoring threshold of 0.9999 declares the best possible 0.1% of guesses as good and
+    the others as bad guesses. In contrast to the QdrantWordGuesser, this weighting is not binary but continuously
+    calculated with an exponential score function.
+    The InMemoryWordGuesser further allows favoring commonly used words if supplied with frequencies.
+    """
 
     def __init__(
             self,
@@ -145,6 +196,13 @@ class InMemoryWordGuesser(WordGuesser):
             word_freq_file_path: Optional[Path] = None,
             scoring_threshold: float = 0.9999
     ):
+        """
+
+        Args:
+            vocab_file_path: The file path to a file with GloVe embeddings
+            word_freq_file_path: The file path to file with word frequencies
+            scoring_threshold: The scoring threshold (see class documentation)
+        """
         super().__init__()
         self.words: Optional[list[str]] = None
         self.word2idx: Optional[dict[str, int]] = None
@@ -155,11 +213,21 @@ class InMemoryWordGuesser(WordGuesser):
         self.initialize_vocab(vocab_file_path, word_freq_file_path=word_freq_file_path)
         self.scored_similarities = None
 
-    def reset_guesses(self):
-        super().reset_guesses()
+    def _reset_guesses(self):
+        super()._reset_guesses()
         self.scored_similarities = np.zeros(self.vocab_size)
 
     def initialize_vocab(self, vocab_file_path: Path, word_freq_file_path: Optional[Path] = None):
+        """
+        Initializes the vocabulary of the guesser
+
+        Args:
+            vocab_file_path: The path to a file with GloVe embeddings
+            word_freq_file_path: The path to a file with word frequencies
+
+        Returns:
+
+        """
         lines = read_vocab(vocab_file_path)
 
         words, embeddings = zip(*[read_glove_line(l) for l in lines])
@@ -173,18 +241,52 @@ class InMemoryWordGuesser(WordGuesser):
         if word_freq_file_path is not None:
             word_frequencies = read_word_frequencies(word_freq_file_path)
             self.word_frequencies = np.array([word_frequencies.get(word, 0) for word in self.words])
-            a=1
 
     def _updated_scored_similarities(self, scoring_threshold: float = 0.9999):
+        """
+        This helper function enables efficient tracking of scores using previous guesses and their ranks.
+        It is called before making the next guess and updates the scores for next guesses using the previous rank.
+
+        Args:
+            scoring_threshold: The scoring threshold defines which previous guesses serve as negative and
+                which previous guesses serve as positive examples. For example, with a scoring threshold of 0.9999
+                all the previous guesses whose rank is in the 0.1% of possible ranks are positive example; and the
+                others are negative examples.
+
+        Returns:
+
+        """
         if len(self.guesses) == 0:
             return
 
+        # Compute the normalized rank score of the last rank (1 = perfect guess, 0 = worst possible guess)
         last_rank_score = 1 - (self.guess_ranks[-1] / self.vocab_size)
+
+        # The scoring function of the last guess. It gets a positive score if the guess is very close to the best
+        # possible guess and a negative one, when it isn't.
         last_score = np.exp(last_rank_score) - np.exp(scoring_threshold)
+
+        # We update the scored similarities for next guesses.
+        # If the last guess was good, it got a positive score, and the scored similarities for similar guesses increase.
+        # Otherwise, the scored similarities for similar guesses decrease, such that next guess will be different.
         self.scored_similarities += self.embeddings @ self.embeddings[self.guess_ids[-1]].T * last_score
         self.scored_similarities[self.guess_ids[-1]] = 0
 
     def make_guess(self, scoring_threshold: Optional[float] = None) -> str:
+        """
+        Makes the next guess. The first two guesses are random. After that, the next guess is aimed to be far away
+        from bad guesses and close to good guesses. In contrast to the QdrantGuesser, this is done using
+        a continuous score.
+
+        Args:
+            scoring_threshold: The scoring threshold defines which previous guesses serve as negative and
+                which previous guesses serve as positive examples. For example, with a scoring threshold of 0.9999
+                all the previous guesses whose rank is in the 0.1% of possible ranks are positive example; and the
+                others are negative examples.
+
+        Returns:
+            The next guess
+        """
         if not scoring_threshold:
             scoring_threshold = self.scoring_threshold
 
@@ -209,8 +311,17 @@ class InMemoryWordGuesser(WordGuesser):
 
 
 class HumanWordGuesser(WordGuesser):
+    """
+    A guesser class with which players can play the game using the console
+    """
 
     def make_guess(self) -> str:
+        """
+        Makes the next guess
+
+        Returns:
+            The next guess
+        """
         while True:
             guess = input("Make a guess: ")
             if guess in self.guesses:
