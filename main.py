@@ -8,12 +8,12 @@ num_games_per_target = 3
 def main():
 
     game = WordGuessingGame(vocab_file_path=vocab_file_path)
-    player = InMemoryWordGuesser(vocab_file_path=vocab_file_path)
-    #player = QdrantWordGuesser(vocab_file_path=vocab_file_path, vector_dim=50)
     in_memory_player = InMemoryWordGuesser(
         vocab_file_path=vocab_file_path,
         #word_freq_file_path=word_frequency_file_path
     )
+    qdrant_player = QdrantWordGuesser(vocab_file_path=vocab_file_path, vector_dim=50)
+    human_player = HumanWordGuesser()
 
     for _ in range(num_targets):
         game.pick_target()

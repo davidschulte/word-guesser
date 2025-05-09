@@ -151,6 +151,7 @@ class InMemoryWordGuesser(WordGuesser):
         self.words = words
         self.word2idx = {word: idx for idx, word in enumerate(words)}
         self.embeddings = np.array(embeddings)
+        self.embeddings /= np.linalg.norm(self.embeddings, axis=1, keepdims=True)
         self.vocab_size = len(words)
 
         if word_freq_file_path is not None:
