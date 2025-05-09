@@ -14,10 +14,12 @@ from word_guesser.utils import read_vocab, read_glove_line
 class WordGuesser:
 
     def __init__(self):
-        self.initialize_guesses()
+        self.guesses = []
+        self.guess_ids = []
+        self.guess_ranks = []
         self.vocab_size = -1
 
-    def initialize_guesses(self):
+    def reset_guesses(self):
         self.guesses = []
         self.guess_ids = []
         self.guess_ranks = []
@@ -27,7 +29,7 @@ class WordGuesser:
         pass
 
     def play(self, game: WordGuessingGame, max_num_guesses: int = 100) -> int:
-        self.initialize_guesses()
+        self.reset_guesses()
         for num_guess in range(max_num_guesses):
             guess = self.make_guess()
             guess_rank = game.rank_guess(guess)
@@ -134,7 +136,12 @@ class InMemoryWordGuesser(WordGuesser):
     def __init__(self, vocab_file_path: Path):
         super().__init__()
         self.initialize_vocab(vocab_file_path)
+        self.scored_similarities = None
 
+
+    def reset_guesses(self):
+        super().reset_guesses()
+        self.scored_similarities = np.zeros(self.vocab_size)
 
     def initialize_vocab(self, vocab_file_path: Path):
         lines = read_vocab(vocab_file_path)
@@ -146,25 +153,24 @@ class InMemoryWordGuesser(WordGuesser):
         self.embeddings = np.array(embeddings)
         self.vocab_size = len(words)
 
+    def _updated_scored_similarities(self, scoring_threshold: float = 0.9999):
+        if len(self.guesses) == 0:
+            return
+
+        last_rank_score = 1 - (self.guess_ranks[-1] / self.vocab_size)
+        last_score = np.exp(last_rank_score) - np.exp(scoring_threshold)
+        self.scored_similarities += self.embeddings @ self.embeddings[self.guess_ids[-1]].T * last_score
+        self.scored_similarities[self.guess_ids[-1]] = 0
+
 
     def make_guess(self, scoring_threshold: float = 0.9999) -> str:
-        if len(self.guesses) < 3:
+        self._updated_scored_similarities(scoring_threshold=scoring_threshold)
+
         if len(self.guesses) < 2:
             guess_id = np.random.randint(0, self.vocab_size)
             guess = self.words[guess_id]
-
         else:
-            similarities = self.embeddings @ self.embeddings[self.guess_ids].T
-            similarities[self.guess_ids] = 0
-            scores = []
-
-            for i, rank in enumerate(self.guess_ranks):
-                rank_score = 1 - (rank / self.vocab_size)
-                scores.append(np.exp(rank_score) - np.exp(scoring_threshold))
-                                
-            similarities_weighted = (similarities * scores).sum(axis=1)
-
-            guess_id = similarities_weighted.argmax()
+            guess_id = self.scored_similarities.argmax()
             guess = self.words[guess_id]
         
         self.guesses.append(guess)
