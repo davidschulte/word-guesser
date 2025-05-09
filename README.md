@@ -27,3 +27,52 @@ When selecting next guesses it favors words that are similar to good previous gu
 
 ### The HumanGuesser
 You can play the game in the console and try to beat the automatic solvers.
+
+## How to run
+
+### Clone the repository
+```bash
+$ git clone https://github.com/davidschulte/word-guesser.git
+```
+
+### Getting the GloVe embeddings
+You can download the used GloVe embeddings [here](https://nlp.stanford.edu/data/glove.6B.zip). Alternatively, you can run the script:
+
+```bash
+$ ./download_glove_embeddings.sh
+```
+
+### Run the demonstration file
+```bash
+$ python main.py
+```
+
+## Evaluation
+
+The two solvers are tested on the top 250 most common words in English according to this [source](https://www.kaggle.com/datasets/rtatman/english-word-frequency). Both solvers choose the first two guesses randomly. To account for that, the solvers run 5 times each on each target word with different starting guesses.
+The vocabulary of the game and guessers conisted of the first 10,000 words in the Wikipedia 2014 + Gigaword 5 GloVe embeddings with 50 dimensions.
+For the InMemoryProcessor a scoring threshold of 0.5 was used.
+
+|                       |  Avg. # Guesses   |  Avg. Time (s)    |
+| :---                  |    :----:         |          ---:     |
+| **QdrantGuesser**     | 62                |        0.20       |
+| **InMemoryGuesser**   | 799               |        0.11       |
+
+
+### Distributions across target words
+
+| | |
+|:-------------------------:|:-------------------------:|
+|<img width="1024" alt="guess means" src="word_guesser/eval/guess_means_top_250.png"> |  <img width="1024" alt="guess stds" src="word_guesser/eval/guess_stds_top_250.png">|
+|<img width="1024" alt="time means" src="word_guesser/eval/time_means_top_250.png"> |  <img width="1024" alt="guess stds" src="word_guesser/eval/time_stds_top_250.png">|
+
+
+## Next steps
+There are a number of next steps to take for improving this project
+
+- The InMemoryWordGuesser performs quite poorly. Although it seems very promising to use weighted score that depends on the rank of previous guesses, the approach is not stable. The right value for the scoring threshold is not obvious and depends on the vocabulary size. It would be worth, investigating this approach further.
+- The performance of both solvers heavily depens on the first 2 intial guesses. Instead of choosing them randomly, they can be chosen more strategically. How this strategy would like is an interesting question for continuing the project.
+- Currently, only cosine similarity is used to measure distance. The solvers should also be evaluated on other distance metrics like Euclidian distance.
+- For this first test, only the smallest GloVe embeddings were used. The performance should also be evaluated on other embeddings.
+- Adding to the two previous points, currently, both the game and the solvers share the same embeddings and same distance metric. It would be interesting, if the solvers can also play the game if they use other embeddings than the game (e.g. SBERT embeddings) or a different distance metric.
+- In the Contexto game, users can request hints if they are lost. It would a fun idea to include this in the project. The question would be, when would a solver best use a hint, if only a limited number of them are available.
