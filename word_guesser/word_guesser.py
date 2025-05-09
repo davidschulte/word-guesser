@@ -8,7 +8,7 @@ from tqdm.auto import tqdm
 from typing import Optional
 
 from word_guesser.word_guessing_game import WordGuessingGame
-from word_guesser.utils import read_vocab, read_glove_line
+from word_guesser.utils import read_vocab, read_glove_line, read_word_frequencies
 
 
 class WordGuesser:
@@ -143,7 +143,7 @@ class InMemoryWordGuesser(WordGuesser):
         super().reset_guesses()
         self.scored_similarities = np.zeros(self.vocab_size)
 
-    def initialize_vocab(self, vocab_file_path: Path):
+    def initialize_vocab(self, vocab_file_path: Path, word_freq_file_path: Optional[Path] = None):
         lines = read_vocab(vocab_file_path)
 
         words, embeddings = zip(*[read_glove_line(l) for l in lines])
@@ -152,6 +152,11 @@ class InMemoryWordGuesser(WordGuesser):
         self.word2idx = {word: idx for idx, word in enumerate(words)}
         self.embeddings = np.array(embeddings)
         self.vocab_size = len(words)
+
+        if word_freq_file_path is not None:
+            word_frequencies = read_word_frequencies(word_freq_file_path)
+            self.word_frequencies = np.array([word_frequencies.get(word, 0) for word in self.words])
+            a=1
 
     def _updated_scored_similarities(self, scoring_threshold: float = 0.9999):
         if len(self.guesses) == 0:
@@ -170,7 +175,12 @@ class InMemoryWordGuesser(WordGuesser):
             guess_id = np.random.randint(0, self.vocab_size)
             guess = self.words[guess_id]
         else:
-            guess_id = self.scored_similarities.argmax()
+            curr_scored_similarities = self.scored_similarities
+            if self.word_frequencies is not None:
+                curr_score_pos_idxs = curr_scored_similarities > 0
+                curr_scored_similarities[curr_score_pos_idxs] *= self.word_frequencies[curr_score_pos_idxs]
+
+            guess_id = curr_scored_similarities.argmax()
             guess = self.words[guess_id]
         
         self.guesses.append(guess)
