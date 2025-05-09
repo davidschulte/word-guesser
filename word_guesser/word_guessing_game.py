@@ -7,11 +7,12 @@ import difflib
 
 class WordGuessingGame:
 
-    def __init__(self, vocab_file_path: Path):
+    def __init__(self, vocab_file_path: Path, vocab_limit: Optional[int] = None):
         self.words = None
         self.word2idx = None
         self.embeddings = None
         self.vocab_size = None
+        self.vocab_limit = vocab_limit
 
         self.initialize_vocab(vocab_file_path)
 
@@ -30,6 +31,8 @@ class WordGuessingGame:
 
         """
         lines = read_vocab(vocab_file_path)
+        if self.vocab_limit:
+            lines = lines[:self.vocab_limit]
 
         words, embeddings = zip(*[read_glove_line(l) for l in lines])
         embeddings = np.array(embeddings)

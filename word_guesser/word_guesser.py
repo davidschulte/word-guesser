@@ -79,22 +79,30 @@ class QdrantWordGuesser(WordGuesser):
             self,
             vocab_file_path: Path,
             vector_dim: int,
+            vocab_limit: Optional[int] = None,
             qdrant_host_url: str = "http://localhost:6333",
             collection_name: Optional[str] = None,
     ):
         super(QdrantWordGuesser, self).__init__()
         self.vector_dim = vector_dim
+        self.vocab_limit = vocab_limit
         self.client = QdrantClient(url=qdrant_host_url)
         self.collection_name = collection_name
 
         self.initialize_vocab(vocab_file_path)
 
-    def initialize_vocab(self, vocab_file_path: Path, overwrite_collection: bool = False, batch_size: int = 1024):
+    def initialize_vocab(
+            self,
+            vocab_file_path: Path,
+            overwrite_collection: bool = False,
+            batch_size: int = 1024
+    ):
         """
         Initializes the vocabulary of the guesser
 
         Args:
             vocab_file_path: The path to a file with GloVe embeddings
+            vocab_limit: If set, only the first n lines from the vocabulary file are used as vocabulary
             overwrite_collection: If set to True, the collection will be overwritten
             batch_size: The batch size for adding points to the collection
 
@@ -103,6 +111,8 @@ class QdrantWordGuesser(WordGuesser):
         """
         if self.collection_name is None:
             self.collection_name = vocab_file_path.stem
+            if self.vocab_limit:
+                self.collection_name += f"_first_{self.vocab_limit}"
 
         if overwrite_collection:
             self.client.delete_collection(collection_name=self.collection_name)
@@ -113,6 +123,8 @@ class QdrantWordGuesser(WordGuesser):
             )
 
         lines = read_vocab(vocab_file_path)
+        if self.vocab_limit:
+            lines = lines[:self.vocab_limit]
         self.vocab_size = len(lines)
 
         collection_count = self.client.count(collection_name=self.collection_name).count
@@ -192,6 +204,7 @@ class InMemoryWordGuesser(WordGuesser):
     def __init__(
             self,
             vocab_file_path: Path,
+            vocab_limit: Optional[int] = None,
             word_freq_file_path: Optional[Path] = None,
             scoring_threshold: float = 0.9999
     ):
@@ -199,6 +212,7 @@ class InMemoryWordGuesser(WordGuesser):
 
         Args:
             vocab_file_path: The file path to a file with GloVe embeddings
+            vocab_limit: If set, only the first n lines from the vocabulary file are used as vocabulary
             word_freq_file_path: The file path to file with word frequencies
             scoring_threshold: The scoring threshold (see class documentation)
         """
@@ -208,6 +222,7 @@ class InMemoryWordGuesser(WordGuesser):
         self.embeddings: Optional[np.array] = None
         self.word_frequencies: Optional[np.array] = None
         self.scoring_threshold = scoring_threshold
+        self.vocab_limit = vocab_limit
 
         self.initialize_vocab(vocab_file_path, word_freq_file_path=word_freq_file_path)
         self.scored_similarities = None
@@ -228,6 +243,8 @@ class InMemoryWordGuesser(WordGuesser):
 
         """
         lines = read_vocab(vocab_file_path)
+        if self.vocab_limit:
+            lines = lines[:self.vocab_limit]
 
         words, embeddings = zip(*[read_glove_line(l) for l in lines])
 
