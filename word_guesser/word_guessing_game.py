@@ -32,7 +32,7 @@ class WordGuessingGame:
 
         if word:
             if word not in self.words:
-                raise ValueError(f"{word} is not in the vobulary.")
+                raise ValueError(f"{word} is not in the vocabulary.")
             
             self.target_word = word
             self.target_id = self.word2idx[word]
@@ -42,7 +42,7 @@ class WordGuessingGame:
                 id = np.random.randint(0, self.vocab_size)
 
             if not 0 <= id < len(self.words):
-                raise ValueError(f"ID {id} is not in the vobulary.")
+                raise ValueError(f"ID {id} is not in the vocabulary.")
 
             self.target_word = self.words[id]
             self.target_id = id
@@ -61,8 +61,7 @@ class WordGuessingGame:
         
         guess_idx = self.word2idx[guess]
 
-        return np.argmax(self.word_ranking == guess_idx)
-
+        return int(np.argmax(self.word_ranking == guess_idx))
 
     def tell_target(self) -> str:
         return self.target_word

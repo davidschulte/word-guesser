@@ -89,7 +89,7 @@ class QdrantWordGuesser(WordGuesser):
 
         num_batches = math.ceil(len(lines) / batch_size)
         for batch_i in tqdm(range(num_batches)):
-            batch = lines[batch_i * batch_size : min((batch_i + 1) * batch_size, len(lines))]
+            batch = lines[batch_i * batch_size: min((batch_i + 1) * batch_size, len(lines))]
             batch_lines_read = [read_glove_line(line) for line in batch]
             self.client.upsert(
                 collection_name=self.collection_name,
@@ -100,8 +100,6 @@ class QdrantWordGuesser(WordGuesser):
                 ],
             )
 
-
-        
     def make_guess(self, strategy: models.RecommendStrategy = models.RecommendStrategy.AVERAGE_VECTOR) -> str:
         if len(self.guesses) < 2:
             guess_id = np.random.randint(0, self.vocab_size)
@@ -116,7 +114,7 @@ class QdrantWordGuesser(WordGuesser):
             prev_best_guess_idx = np.argmin(self.guess_ranks)
             prev_best_guess_id = self.guess_ids[prev_best_guess_idx]
 
-            prev_other_guess_ids = [guess_id for idx, guess_id in enumerate(self.guess_ids) if idx != prev_best_guess_idx]
+            prev_other_guess_ids = [id_ for idx, id_ in enumerate(self.guess_ids) if idx != prev_best_guess_idx]
 
             query_result = self.client.query_points(
                 collection_name="test_collection",
@@ -141,11 +139,15 @@ class QdrantWordGuesser(WordGuesser):
 
 class InMemoryWordGuesser(WordGuesser):
 
-    def __init__(self, vocab_file_path: Path):
+    def __init__(self, vocab_file_path: Path, word_freq_file_path: Optional[Path] = None):
         super().__init__()
-        self.initialize_vocab(vocab_file_path)
-        self.scored_similarities = None
+        self.words: Optional[list[str]] = None
+        self.word2idx: Optional[dict[str, int]] = None
+        self.embeddings: Optional[np.array] = None
+        self.word_frequencies: Optional[np.array] = None
 
+        self.initialize_vocab(vocab_file_path, word_freq_file_path=word_freq_file_path)
+        self.scored_similarities = None
 
     def reset_guesses(self):
         super().reset_guesses()
@@ -175,7 +177,6 @@ class InMemoryWordGuesser(WordGuesser):
         last_score = np.exp(last_rank_score) - np.exp(scoring_threshold)
         self.scored_similarities += self.embeddings @ self.embeddings[self.guess_ids[-1]].T * last_score
         self.scored_similarities[self.guess_ids[-1]] = 0
-
 
     def make_guess(self, scoring_threshold: float = 0.9999) -> str:
         self._updated_scored_similarities(scoring_threshold=scoring_threshold)
