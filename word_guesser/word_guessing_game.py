@@ -53,7 +53,7 @@ class WordGuessingGame:
         if guess not in self.words:
             print(f"The word {guess} is not in the vocabulary.")
             if suggest_vocabulary_word:
-                similar_words = difflib.get_close_matches()
+                similar_words = difflib.get_close_matches(guess, self.words, n=1)
                 if similar_words:
                     print(f"Did you mean {similar_words[0]}?")
             
