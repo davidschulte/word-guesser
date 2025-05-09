@@ -139,12 +139,18 @@ class QdrantWordGuesser(WordGuesser):
 
 class InMemoryWordGuesser(WordGuesser):
 
-    def __init__(self, vocab_file_path: Path, word_freq_file_path: Optional[Path] = None):
+    def __init__(
+            self,
+            vocab_file_path: Path,
+            word_freq_file_path: Optional[Path] = None,
+            scoring_threshold: float = 0.9999
+    ):
         super().__init__()
         self.words: Optional[list[str]] = None
         self.word2idx: Optional[dict[str, int]] = None
         self.embeddings: Optional[np.array] = None
         self.word_frequencies: Optional[np.array] = None
+        self.scoring_threshold = scoring_threshold
 
         self.initialize_vocab(vocab_file_path, word_freq_file_path=word_freq_file_path)
         self.scored_similarities = None
@@ -178,7 +184,10 @@ class InMemoryWordGuesser(WordGuesser):
         self.scored_similarities += self.embeddings @ self.embeddings[self.guess_ids[-1]].T * last_score
         self.scored_similarities[self.guess_ids[-1]] = 0
 
-    def make_guess(self, scoring_threshold: float = 0.9999) -> str:
+    def make_guess(self, scoring_threshold: Optional[float] = None) -> str:
+        if not scoring_threshold:
+            scoring_threshold = self.scoring_threshold
+
         self._updated_scored_similarities(scoring_threshold=scoring_threshold)
 
         if len(self.guesses) < 2:
