@@ -44,6 +44,14 @@ You can download the used GloVe embeddings [here](https://nlp.stanford.edu/data/
 $ ./download_glove_embeddings.sh
 ```
 
+### Run Qdrant
+If you want to use the QdrantWordGuesser, you have to run a Qdrant host. After installing Qdrant, you can it locally using docker. See [here](https://qdrant.tech/documentation/quickstart/) for details.
+```bash
+$ docker run -p 6333:6333 -p 6334:6334 \
+    -v "$(pwd)/qdrant_storage:/qdrant/storage:z" \
+    qdrant/qdrant
+```
+
 ### Run the demonstration file
 ```bash
 $ python main.py
