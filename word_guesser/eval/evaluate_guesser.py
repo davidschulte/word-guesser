@@ -1,5 +1,5 @@
 import numpy as np
-from word_guesser import WordGuesser, WordGuessingGame, QdrantWordGuesser, InMemoryWordGuesser
+from word_guesser import WordGuesser, SimulatedGame, QdrantWordGuesser, InMemoryWordGuesser
 from word_guesser.utils import read_word_frequencies
 from typing import Union, Optional
 from pathlib import Path
@@ -19,7 +19,7 @@ num_words = 250
 
 def evaluate_guesser(
         guesser: WordGuesser,
-        game: WordGuessingGame,
+        game: SimulatedGame,
         target: Optional[Union[str, int]],
         seed: Optional[int] = None
 ) -> int:
@@ -36,7 +36,7 @@ def evaluate_guesser(
 
 
 def main():
-    game = WordGuessingGame(vocab_file_path, vocab_limit=vocab_limit)
+    game = SimulatedGame(vocab_file_path, vocab_limit=vocab_limit)
 
     guessers = {
         "InMemoryGuesser": InMemoryWordGuesser(vocab_file_path, vocab_limit=vocab_limit, scoring_threshold=0.5),

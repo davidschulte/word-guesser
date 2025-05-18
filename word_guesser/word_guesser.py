@@ -7,7 +7,7 @@ import numpy as np
 from qdrant_client import QdrantClient, models
 from tqdm.auto import tqdm
 
-from word_guesser.word_guessing_game import WordGuessingGame
+from word_guesser.word_guessing_game import SimulatedGame
 from word_guesser.utils import read_vocab, read_glove_line, read_word_frequencies
 
 
@@ -34,7 +34,7 @@ class WordGuesser:
         """
         pass
 
-    def play(self, game: WordGuessingGame, max_num_guesses: Optional[int] = None, verbose: int = 1) -> int:
+    def play(self, game: SimulatedGame, max_num_guesses: Optional[int] = None, verbose: int = 1) -> int:
         """
         Plays a game
 
